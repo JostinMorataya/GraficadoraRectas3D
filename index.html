@@ -1,0 +1,548 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Rectas en el espacio 3D</title>
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;600&family=STIX+Two+Text:ital@0;1&display=swap"
+    />
+    <style>
+      :root {
+        --bg: #f2f5fa;
+        --panel: #fff;
+        --ink: #14213d;
+        --mute: #5b6784;
+        --line: #d5dcea;
+        --grid: #e1e7f1;
+        --axis: #14213d;
+        --field: #f6f8fc;
+        --accent: #1c5fd6;
+        box-sizing: border-box;
+        padding-top: env(safe-area-inset-top, 0px);
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --bg: #0f1829;
+          --panel: #172238;
+          --ink: #e6ecf8;
+          --mute: #93a0bd;
+          --line: #2a3857;
+          --grid: #1f2c48;
+          --axis: #cfd8ec;
+          --field: #1e2b46;
+          --accent: #6ea2ff;
+        }
+      }
+      :root[data-theme="dark"] {
+        --bg: #0f1829;
+        --panel: #172238;
+        --ink: #e6ecf8;
+        --mute: #93a0bd;
+        --line: #2a3857;
+        --grid: #1f2c48;
+        --axis: #cfd8ec;
+        --field: #1e2b46;
+        --accent: #6ea2ff;
+      }
+      html {
+        height: 100%;
+        scroll-padding-top: env(safe-area-inset-top, 0px);
+      }
+      body {
+        height: 100%;
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font:
+          15px/1.4 "Instrument Sans",
+          system-ui,
+          sans-serif;
+      }
+      .app {
+        display: grid;
+        grid-template-columns: 340px 1fr;
+        height: 100%;
+      }
+      .panel {
+        background: var(--panel);
+        border-right: 1px solid var(--line);
+        overflow-y: auto;
+        padding: 18px 16px;
+      }
+      h1 {
+        font:
+          italic 400 24px/1.15 "STIX Two Text",
+          Georgia,
+          serif;
+        margin: 0 0 6px;
+      }
+      .hint {
+        color: var(--mute);
+        margin: 0 0 14px;
+        font-size: 13px;
+      }
+      .ln {
+        border-left: 4px solid var(--c);
+        padding: 4px 0 10px 12px;
+        margin-bottom: 12px;
+      }
+      .ln header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 6px;
+      }
+      .row3 {
+        display: grid;
+        grid-template-columns: 62px repeat(3, 1fr);
+        gap: 6px;
+        align-items: center;
+        margin-bottom: 6px;
+      }
+      .row3 span {
+        color: var(--mute);
+        font-size: 13px;
+      }
+      input[type="number"] {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 6px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: var(--field);
+        color: var(--ink);
+        font: inherit;
+      }
+      .eq {
+        font-family: "STIX Two Text", Georgia, serif;
+        font-size: 16px;
+        line-height: 1.5;
+        margin-top: 8px;
+      }
+      .eq small {
+        display: block;
+        font:
+          600 12px "Instrument Sans",
+          sans-serif;
+        color: var(--mute);
+      }
+      .eq div + div {
+        margin-top: 6px;
+      }
+      button {
+        font: inherit;
+        padding: 7px 12px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: var(--field);
+        color: var(--ink);
+        cursor: pointer;
+      }
+      button:hover {
+        border-color: var(--accent);
+      }
+      button:disabled {
+        opacity: 0.4;
+        cursor: default;
+      }
+      button:focus-visible,
+      input:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 1px;
+      }
+      .bar {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin: 6px 0 16px;
+      }
+      .t {
+        display: block;
+        font-size: 14px;
+      }
+      .t input {
+        width: 100%;
+        margin-top: 6px;
+        accent-color: var(--accent);
+      }
+      main {
+        position: relative;
+        min-height: 0;
+        min-width: 0;
+      }
+      canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+        touch-action: none;
+        cursor: grab;
+      }
+      canvas:active {
+        cursor: grabbing;
+      }
+      @media (max-width: 760px) {
+        .app {
+          grid-template-columns: 1fr;
+          grid-template-rows: 50% 1fr;
+        }
+        main {
+          order: -1;
+        }
+        .panel {
+          border-right: 0;
+          border-top: 1px solid var(--line);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <aside class="panel">
+        <h1>Rectas en el espacio</h1>
+        <p class="hint">
+          Arrastra para rotar. Con Shift (o clic derecho) arrastra para desplazar. Rueda o pellizco
+          para acercar: a mayor zoom se muestran todas las unidades.
+        </p>
+        <div id="lines"></div>
+        <div class="bar">
+          <button id="add">Agregar recta</button><button id="reset">Restablecer vista</button>
+        </div>
+        <label class="t"
+          >Punto móvil: t = <b id="tv">0</b
+          ><input type="range" id="t" min="-50" max="50" step="0.1" value="0"
+        /></label>
+      </aside>
+      <main><canvas id="c" aria-label="Gráfica 3D de rectas"></canvas></main>
+    </div>
+    <script>
+      const COLORS = ["#d6336c", "#1c7ed6", "#2f9e44", "#e8590c", "#7048e8"];
+      const R = 50,
+        Z0 = 2.5;
+      let lines = [
+        { p: [1, 2, 0], d: [2, -1, 3] },
+        { p: [-3, 0, 4], d: [1, 1, -2] },
+      ];
+      let yaw = -0.8,
+        pitch = 0.45,
+        zoom = Z0,
+        ox = 0,
+        oy = 0,
+        tv = 0,
+        W = 0,
+        H = 0;
+      const cv = document.getElementById("c"),
+        ctx = cv.getContext("2d");
+      const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+      const clamp = (z) => Math.max(0.3, Math.min(60, z));
+
+      /* ---------- Ecuaciones ---------- */
+      const n = (v) => String(+v.toFixed(3)).replace("-", "−");
+      function par(p, d) {
+        if (d === 0) return n(p);
+        const m = Math.abs(d),
+          c = (m === 1 ? "" : n(m)) + "t";
+        if (p === 0) return (d < 0 ? "−" : "") + c;
+        return n(p) + (d < 0 ? " − " : " + ") + c;
+      }
+      function sym(p, d, v) {
+        const num = p === 0 ? v : v + (p > 0 ? " − " : " + ") + n(Math.abs(p));
+        return (p === 0 ? num : "(" + num + ")") + "/" + (d < 0 ? "(" + n(d) + ")" : n(d));
+      }
+      function equations(L) {
+        const V = ["x", "y", "z"];
+        if (L.d.every((v) => v === 0))
+          return { par: "El vector director no puede ser (0, 0, 0).", sym: "" };
+        const P = V.map((v, i) => `${v} = ${par(L.p[i], L.d[i])}`).join("<br>");
+        const nz = [],
+          z = [];
+        V.forEach((v, i) =>
+          L.d[i] !== 0 ? nz.push(sym(L.p[i], L.d[i], v)) : z.push(`${v} = ${n(L.p[i])}`),
+        );
+        return { par: P, sym: nz.join(" = ") + (z.length ? ",&nbsp; " + z.join(", ") : "") };
+      }
+
+      /* ---------- Panel de rectas ---------- */
+      const box = document.getElementById("lines");
+      function buildList() {
+        box.innerHTML = "";
+        lines.forEach((L, i) => {
+          const s = document.createElement("section");
+          s.className = "ln";
+          s.style.setProperty("--c", COLORS[i % COLORS.length]);
+          const inp = (pre, labs, arr) =>
+            labs
+              .map(
+                (l, k) =>
+                  `<input type="number" step="any" data-k="${pre}${k}" ` +
+                  `aria-label="${l}" value="${arr[k]}">`,
+              )
+              .join("");
+          const off = lines.length === 1 ? "disabled" : "";
+          s.innerHTML =
+            `<header><b>Recta ${i + 1}</b><span>` +
+            `<button class="go" aria-label="Centrar la vista en P${i + 1}">` +
+            `Centrar en P</button> ` +
+            `<button class="rm" ${off} aria-label="Quitar recta ${i + 1}">` +
+            `Quitar</button></span></header>` +
+            `<div class="row3"><span>Punto P</span>` +
+            inp("p", ["x₀", "y₀", "z₀"], L.p) +
+            `</div>` +
+            `<div class="row3"><span>Vector d</span>` +
+            inp("d", ["a", "b", "c"], L.d) +
+            `</div>` +
+            `<div class="eq"><div><small>Ecuaciones paramétricas</small>` +
+            `<span class="ep"></span></div>` +
+            `<div><small>Ecuaciones simétricas</small>` +
+            `<span class="es"></span></div></div>`;
+          s.querySelector(".rm").onclick = () => {
+            lines.splice(i, 1);
+            buildList();
+            draw();
+          };
+          s.querySelector(".go").onclick = () => {
+            const [x, y] = pr(...L.p);
+            ox = -(x - W / 2 - ox);
+            oy = -(y - H / 2 - oy);
+            draw();
+          };
+          s.querySelectorAll("input").forEach(
+            (inp) =>
+              (inp.oninput = () => {
+                const v = parseFloat(inp.value);
+                L[inp.dataset.k[0]][+inp.dataset.k[1]] = isNaN(v) ? 0 : v;
+                upd(s, L);
+                draw();
+              }),
+          );
+          box.appendChild(s);
+          upd(s, L);
+        });
+        document.getElementById("add").disabled = lines.length >= 5;
+      }
+      function upd(s, L) {
+        const e = equations(L);
+        s.querySelector(".ep").innerHTML = e.par;
+        s.querySelector(".es").innerHTML = e.sym;
+      }
+      document.getElementById("add").onclick = () => {
+        lines.push({ p: [0, 0, 0], d: [1, 1, 1] });
+        buildList();
+        draw();
+      };
+      document.getElementById("reset").onclick = () => {
+        yaw = -0.8;
+        pitch = 0.45;
+        zoom = Z0;
+        ox = oy = 0;
+        draw();
+      };
+      document.getElementById("t").oninput = (e) => {
+        tv = +e.target.value;
+        document.getElementById("tv").textContent = n(tv);
+        draw();
+      };
+
+      /* ---------- Proyección y dibujo ---------- */
+      function pr(x, y, z) {
+        const cy = Math.cos(yaw),
+          sy = Math.sin(yaw),
+          cp = Math.cos(pitch),
+          sp = Math.sin(pitch);
+        const x1 = x * cy - y * sy,
+          y1 = x * sy + y * cy,
+          s = (Math.min(W, H) / (2.7 * R)) * zoom;
+        return [W / 2 + ox + x1 * s, H / 2 + oy - (z * cp + y1 * sp) * s];
+      }
+      function seg(a, b, col, w, dash) {
+        const A = pr(...a),
+          B = pr(...b);
+        ctx.beginPath();
+        ctx.moveTo(...A);
+        ctx.lineTo(...B);
+        ctx.strokeStyle = col;
+        ctx.lineWidth = w;
+        ctx.setLineDash(dash || []);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      function dot(P, r, col, ring) {
+        const [x, y] = pr(...P);
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, 7);
+        ctx.fillStyle = col;
+        ctx.fill();
+        if (ring) {
+          ctx.lineWidth = 2;
+          ctx.strokeStyle = ring;
+          ctx.stroke();
+        }
+      }
+      function draw() {
+        ctx.clearRect(0, 0, W, H);
+        const grid = css("--grid"),
+          axis = css("--axis"),
+          mute = css("--mute"),
+          ink = css("--ink"),
+          panel = css("--panel");
+        const s = (Math.min(W, H) / (2.7 * R)) * zoom,
+          lab = [1, 2, 5, 10, 25].find((v) => s * v >= 26) || 50,
+          tk = s >= 6 ? 1 : lab,
+          g = s >= 12 ? 1 : lab;
+        for (let i = -R; i <= R; i += g) {
+          seg([i, -R, 0], [i, R, 0], grid, 1);
+          seg([-R, i, 0], [R, i, 0], grid, 1);
+        }
+        [
+          [1, 0, 0, "x"],
+          [0, 1, 0, "y"],
+          [0, 0, 1, "z"],
+        ].forEach(([a, b, c, l]) => {
+          seg([-a * R, -b * R, -c * R], [a * R, b * R, c * R], axis, 1.5);
+          const [x, y] = pr(a * (R + 1), b * (R + 1), c * (R + 1));
+          ctx.fillStyle = ink;
+          ctx.font = 'italic 18px "STIX Two Text",serif';
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(l, x, y);
+          ctx.fillStyle = mute;
+          ctx.font = '11px "Instrument Sans",sans-serif';
+          for (let k = -R; k <= R; k += tk) {
+            if (!k) continue;
+            const [tx, ty] = pr(a * k, b * k, c * k);
+            ctx.fillRect(tx - 1, ty - 1, 2, 2);
+            if (k % lab === 0) ctx.fillText(k, tx + 8, ty + 9);
+          }
+        });
+        lines.forEach((L, i) => {
+          const col = COLORS[i % COLORS.length];
+          if (L.d.every((v) => v === 0)) return;
+          let lo = -1e9,
+            hi = 1e9,
+            ok = true;
+          for (let k = 0; k < 3; k++) {
+            const d = L.d[k],
+              p = L.p[k];
+            if (d === 0) {
+              if (Math.abs(p) > R) ok = false;
+            } else {
+              let a = (-R - p) / d,
+                b = (R - p) / d;
+              if (a > b) [a, b] = [b, a];
+              lo = Math.max(lo, a);
+              hi = Math.min(hi, b);
+            }
+          }
+          const at = (t) => L.p.map((p, k) => p + t * L.d[k]);
+          if (ok && lo <= hi) seg(at(lo), at(hi), col, 2.8);
+          const Q = at(1),
+            A = pr(...L.p),
+            B = pr(...Q),
+            ang = Math.atan2(B[1] - A[1], B[0] - A[0]);
+          seg(L.p, Q, col, 1.2, [4, 3]);
+          ctx.beginPath();
+          ctx.moveTo(B[0], B[1]);
+          ctx.lineTo(B[0] - 9 * Math.cos(ang - 0.4), B[1] - 9 * Math.sin(ang - 0.4));
+          ctx.lineTo(B[0] - 9 * Math.cos(ang + 0.4), B[1] - 9 * Math.sin(ang + 0.4));
+          ctx.closePath();
+          ctx.fillStyle = col;
+          ctx.fill();
+          dot(L.p, 4.5, col);
+          const [lx, ly] = pr(...L.p);
+          ctx.fillStyle = ink;
+          ctx.font = 'italic 14px "STIX Two Text",serif';
+          ctx.textAlign = "left";
+          ctx.fillText("P" + (i + 1), lx + 8, ly - 8);
+          dot(at(tv), 6, col, panel);
+        });
+      }
+
+      /* ---------- Interacción ---------- */
+      const ptr = new Map();
+      let pd = 1,
+        pm = [0, 0],
+        mode = "rot";
+      const loc = (e) => {
+        const r = cv.getBoundingClientRect();
+        return [e.clientX - r.left, e.clientY - r.top];
+      };
+      const two = () => {
+        const [a, b] = [...ptr.values()];
+        return {
+          d: Math.hypot(a[0] - b[0], a[1] - b[1]) || 1,
+          m: [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2],
+        };
+      };
+      function zoomAt(mx, my, f) {
+        const z = clamp(zoom * f),
+          r = z / zoom;
+        ox = mx - W / 2 - (mx - W / 2 - ox) * r;
+        oy = my - H / 2 - (my - H / 2 - oy) * r;
+        zoom = z;
+      }
+      cv.addEventListener("contextmenu", (e) => e.preventDefault());
+      cv.addEventListener("pointerdown", (e) => {
+        cv.setPointerCapture(e.pointerId);
+        ptr.set(e.pointerId, loc(e));
+        mode = e.button === 2 || e.shiftKey ? "pan" : "rot";
+        if (ptr.size === 2) {
+          const t = two();
+          pd = t.d;
+          pm = t.m;
+        }
+      });
+      cv.addEventListener("pointermove", (e) => {
+        if (!ptr.has(e.pointerId)) return;
+        const o = ptr.get(e.pointerId),
+          p = loc(e);
+        ptr.set(e.pointerId, p);
+        if (ptr.size === 1) {
+          if (mode === "pan") {
+            ox += p[0] - o[0];
+            oy += p[1] - o[1];
+          } else {
+            yaw += (p[0] - o[0]) * 0.008;
+            pitch = Math.max(-1.55, Math.min(1.55, pitch + (p[1] - o[1]) * 0.008));
+          }
+        } else if (ptr.size === 2) {
+          const t = two();
+          ox += t.m[0] - pm[0];
+          oy += t.m[1] - pm[1];
+          zoomAt(t.m[0], t.m[1], t.d / pd);
+          pd = t.d;
+          pm = t.m;
+        }
+        draw();
+      });
+      ["pointerup", "pointercancel"].forEach((t) =>
+        cv.addEventListener(t, (e) => ptr.delete(e.pointerId)),
+      );
+      cv.addEventListener(
+        "wheel",
+        (e) => {
+          e.preventDefault();
+          const [x, y] = loc(e);
+          zoomAt(x, y, Math.exp(-e.deltaY * 0.0015));
+          draw();
+        },
+        { passive: false },
+      );
+
+      function fit() {
+        const r = cv.getBoundingClientRect(),
+          dpr = window.devicePixelRatio || 1;
+        W = r.width;
+        H = r.height;
+        cv.width = W * dpr;
+        cv.height = H * dpr;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        draw();
+      }
+      new ResizeObserver(fit).observe(cv);
+      matchMedia("(prefers-color-scheme:dark)").addEventListener("change", draw);
+      buildList();
+    </script>
+  </body>
+</html>
